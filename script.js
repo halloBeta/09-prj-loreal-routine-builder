@@ -1,57 +1,157 @@
-/* Get references to DOM elements */
 const categoryFilter = document.getElementById("categoryFilter");
 const productsContainer = document.getElementById("productsContainer");
+const selectedProductsList = document.getElementById("selectedProductsList");
 const chatForm = document.getElementById("chatForm");
+const chatInput = document.getElementById("chatInput");
 const chatWindow = document.getElementById("chatWindow");
+const generateBtn = document.getElementById("generateRoutine");
 
-/* Show initial placeholder until user selects a category */
-productsContainer.innerHTML = `
-  <div class="placeholder-message">
-    Select a category to view products
-  </div>
-`;
+let allProducts = [];
+let selectedProducts = JSON.parse(localStorage.getItem("selectedProducts")) || [];
+let conversationHistory = [];
 
-/* Load product data from JSON file */
+function saveSelectedProducts() {
+  localStorage.setItem("selectedProducts", JSON.stringify(selectedProducts));
+}
+
+function displaySelectedProducts() {
+  selectedProductsList.innerHTML = selectedProducts
+    .map((p, i) => `
+      <div class="selected-product">
+        <img src="${p.image}" alt="${p.name}" title="${p.description}" />
+        <button onclick="removeSelectedProduct(${i})">Remove</button>
+      </div>
+    `).join("");
+}
+
+function removeSelectedProduct(index) {
+  selectedProducts.splice(index, 1);
+  saveSelectedProducts();
+  displaySelectedProducts();
+  highlightSelectedCards();
+}
+
+function highlightSelectedCards() {
+  document.querySelectorAll(".product-card").forEach(card => {
+    const id = parseInt(card.dataset.id);
+    if (selectedProducts.some(p => p.id === id)) {
+      card.classList.add("selected");
+    } else {
+      card.classList.remove("selected");
+    }
+  });
+}
+
 async function loadProducts() {
-  const response = await fetch("products.json");
-  const data = await response.json();
+  const res = await fetch("products.json");
+  const data = await res.json();
+  allProducts = data.products;
   return data.products;
 }
 
-/* Create HTML for displaying product cards */
 function displayProducts(products) {
   productsContainer.innerHTML = products
-    .map(
-      (product) => `
-    <div class="product-card">
-      <img src="${product.image}" alt="${product.name}">
-      <div class="product-info">
-        <h3>${product.name}</h3>
-        <p>${product.brand}</p>
+    .map(product => `
+      <div class="product-card" data-id="${product.id}" title="${product.description}">
+        <img src="${product.image}" alt="${product.name}">
+        <div class="product-info">
+          <h3>${product.name}</h3>
+          <p>${product.brand}</p>
+        </div>
       </div>
-    </div>
-  `
-    )
-    .join("");
+    `).join("");
+
+  document.querySelectorAll(".product-card").forEach(card => {
+    card.addEventListener("click", () => {
+      const id = parseInt(card.dataset.id);
+      const product = allProducts.find(p => p.id === id);
+      const index = selectedProducts.findIndex(p => p.id === id);
+
+      if (index === -1) {
+        selectedProducts.push(product);
+      } else {
+        selectedProducts.splice(index, 1);
+      }
+
+      saveSelectedProducts();
+      displaySelectedProducts();
+      highlightSelectedCards();
+    });
+  });
+
+  highlightSelectedCards();
 }
 
-/* Filter and display products when category changes */
 categoryFilter.addEventListener("change", async (e) => {
   const products = await loadProducts();
   const selectedCategory = e.target.value;
-
-  /* filter() creates a new array containing only products 
-     where the category matches what the user selected */
-  const filteredProducts = products.filter(
-    (product) => product.category === selectedCategory
-  );
-
-  displayProducts(filteredProducts);
+  const filtered = products.filter(p => p.category === selectedCategory);
+  displayProducts(filtered);
 });
 
-/* Chat form submission handler - placeholder for OpenAI integration */
-chatForm.addEventListener("submit", (e) => {
+generateBtn.addEventListener("click", async () => {
+  if (selectedProducts.length === 0) return;
+
+  const prompt = `Here are the user's selected L'Oréal products:\n${selectedProducts.map(p => `- ${p.name} (${p.brand}): ${p.description}`).join("\n")}\n\nCreate a personalized skincare/beauty routine using these products.`;
+
+  const messages = [
+    { role: "system", content: "You are a helpful skincare and beauty advisor." },
+    { role: "user", content: prompt }
+  ];
+
+  chatWindow.innerHTML += `<div class="chat-message user">Generating your routine...</div>`;
+
+  const res = await fetch("https://billowing-resonance-abf5.dkotthak.workers.dev/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages })
+  });
+
+  const data = await res.json();
+  const reply = data.choices?.[0]?.message?.content || "Sorry, something went wrong.";
+
+  conversationHistory = [...messages, { role: "assistant", content: reply }];
+  chatWindow.innerHTML += `<div class="chat-message ai">${formatAsList(reply)}</div>`;
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+});
+
+chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+  const userMsg = chatInput.value.trim();
+  if (!userMsg) return;
 
-  chatWindow.innerHTML = "Connect to the OpenAI API for a response!";
+  chatWindow.innerHTML += `<div class="chat-message user">${userMsg}</div>`;
+  chatInput.value = "";
+
+  conversationHistory.push({ role: "user", content: userMsg });
+
+  const res = await fetch("https://billowing-resonance-abf5.dkotthak.workers.dev/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: conversationHistory })
+  });
+
+  const data = await res.json();
+  const reply = data.choices?.[0]?.message?.content || "Sorry, something went wrong.";
+
+  conversationHistory.push({ role: "assistant", content: reply });
+  chatWindow.innerHTML += `<div class="chat-message ai">${formatAsList(reply)}</div>`;
+  chatWindow.scrollTop = chatWindow.scrollHeight;
 });
+
+window.addEventListener("load", () => {
+  displaySelectedProducts();
+});
+
+// Helper function to turn plain text into a numbered list
+function formatAsList(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  const items = lines.map(line => {
+    // Remove any leading numbers or bullets
+    return line.replace(/^(\d+\.\s*|- )/, '');
+  });
+
+  return `<ol>${items.map(item => `<li>${item}</li>`).join('')}</ol>`;
+}
+
+
