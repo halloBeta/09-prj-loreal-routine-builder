@@ -145,13 +145,32 @@ window.addEventListener("load", () => {
 
 // Helper function to turn plain text into a numbered list
 function formatAsList(text) {
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-  const items = lines.map(line => {
-    // Remove any leading numbers or bullets
-    return line.replace(/^(\d+\.\s*|- )/, '');
+  const lines = text
+    .replace(/\*\*/g, '') // remove all bold markers
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line);
+
+  const formattedLines = lines.map(line => {
+    // Match step lines like "4. Moisturizing:"
+    const stepMatch = line.match(/^(\d+)\.\s*(.*)/);
+    if (stepMatch) {
+      const [, number, content] = stepMatch;
+      return `<div class="routine-step"><span class="step-number">${number}.</span> <span class="step-title">${content}</span></div>`;
+    }
+
+    // Format bullet lines like "- Product Suggestion: ..."
+    if (line.startsWith('- ')) {
+      return `<div class="sub-point">${line.slice(2)}</div>`;
+    }
+
+    // Fallback for other lines
+    return `<div class="routine-step">${line}</div>`;
   });
 
-  return `<ol>${items.map(item => `<li>${item}</li>`).join('')}</ol>`;
+  return formattedLines.join('');
 }
+
+
 
 

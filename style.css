@@ -265,3 +265,35 @@ body {
   word-wrap: break-word;
   white-space: normal;
 }
+
+.routine-step {
+  margin-bottom: 12px;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.routine-step strong {
+  font-weight: 600;
+}
+
+.routine-step {
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.step-number {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.step-title {
+  font-weight: 600;
+}
+
+.sub-point {
+  margin-left: 24px;
+  font-size: 16px;
+  color: #444;
+  line-height: 1.5;
+}
+
