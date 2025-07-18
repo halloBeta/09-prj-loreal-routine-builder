@@ -253,3 +253,15 @@ body {
 .generate-btn i {
   margin-right: 8px;
 }
+
+.chat-message.ai ol {
+  padding-left: 24px;  /* adds more space before numbers */
+  margin: 10px 0;
+}
+
+.chat-message.ai li {
+  margin-bottom: 8px;
+  line-height: 1.6;
+  word-wrap: break-word;
+  white-space: normal;
+}
