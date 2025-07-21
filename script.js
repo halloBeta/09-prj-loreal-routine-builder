@@ -2,7 +2,7 @@ const categoryFilter = document.getElementById("categoryFilter");
 const productsContainer = document.getElementById("productsContainer");
 const selectedProductsList = document.getElementById("selectedProductsList");
 const chatForm = document.getElementById("chatForm");
-const chatInput = document.getElementById("chatInput");
+const chatInput = document.getElementById("userInput"); // ✅ Fixed ID
 const chatWindow = document.getElementById("chatWindow");
 const generateBtn = document.getElementById("generateRoutine");
 
@@ -94,8 +94,12 @@ generateBtn.addEventListener("click", async () => {
 
   const prompt = `Here are the user's selected L'Oréal products:\n${selectedProducts.map(p => `- ${p.name} (${p.brand}): ${p.description}`).join("\n")}\n\nCreate a personalized skincare/beauty routine using these products.`;
 
-  const messages = [
-    { role: "system", content: "You are a helpful skincare and beauty advisor." },
+  // ✅ Initialize conversation history
+  conversationHistory = [
+    {
+      role: "system",
+      content: "You are a helpful skincare and beauty advisor. You only answer questions about routines, skincare, haircare, makeup, fragrance, or the selected products."
+    },
     { role: "user", content: prompt }
   ];
 
@@ -104,13 +108,14 @@ generateBtn.addEventListener("click", async () => {
   const res = await fetch("https://billowing-resonance-abf5.dkotthak.workers.dev/", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages })
+    body: JSON.stringify({ messages: conversationHistory })
   });
 
   const data = await res.json();
   const reply = data.choices?.[0]?.message?.content || "Sorry, something went wrong.";
 
-  conversationHistory = [...messages, { role: "assistant", content: reply }];
+  conversationHistory.push({ role: "assistant", content: reply });
+
   chatWindow.innerHTML += `<div class="chat-message ai">${formatAsList(reply)}</div>`;
   chatWindow.scrollTop = chatWindow.scrollHeight;
 });
@@ -135,6 +140,7 @@ chatForm.addEventListener("submit", async (e) => {
   const reply = data.choices?.[0]?.message?.content || "Sorry, something went wrong.";
 
   conversationHistory.push({ role: "assistant", content: reply });
+
   chatWindow.innerHTML += `<div class="chat-message ai">${formatAsList(reply)}</div>`;
   chatWindow.scrollTop = chatWindow.scrollHeight;
 });
@@ -146,30 +152,28 @@ window.addEventListener("load", () => {
 // Helper function to turn plain text into a numbered list
 function formatAsList(text) {
   const lines = text
-    .replace(/\*\*/g, '') // remove all bold markers
+    .replace(/\*\*/g, '') // remove bold
     .split('\n')
     .map(line => line.trim())
     .filter(line => line);
 
   const formattedLines = lines.map(line => {
-    // Match step lines like "4. Moisturizing:"
     const stepMatch = line.match(/^(\d+)\.\s*(.*)/);
     if (stepMatch) {
       const [, number, content] = stepMatch;
       return `<div class="routine-step"><span class="step-number">${number}.</span> <span class="step-title">${content}</span></div>`;
     }
 
-    // Format bullet lines like "- Product Suggestion: ..."
     if (line.startsWith('- ')) {
       return `<div class="sub-point">${line.slice(2)}</div>`;
     }
 
-    // Fallback for other lines
     return `<div class="routine-step">${line}</div>`;
   });
 
   return formattedLines.join('');
 }
+
 
 
 
